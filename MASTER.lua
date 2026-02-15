@@ -1,16 +1,20 @@
 --[[
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║                  TYCOON AI v17.1 - MASTER SCRIPT                              ║
+║                  TYCOON AI v17.1.1 - MASTER SCRIPT FIXED                      ║
 ║                 🎯 ESTE EJECUTA Y CARGA TODO                                  ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
     📦 CARGA AUTOMÁTICAMENTE:
-    1. Brain.lua          - Sistema de 5 IAs
-    2. Database_Part1.lua - 18 comandos
-    3. Database_Part2.lua - 26 comandos  
+    1. Database_Part1.lua - 18 comandos (PRIMERO)
+    2. Database_Part2.lua - 26 comandos  
+    3. Brain.lua          - Sistema de 5 IAs (DESPUÉS)
     4. UI.lua             - Interfaz completa
     
     ✨ 1 SCRIPT = TODO EL SISTEMA
+    
+    🔧 CORRECCIONES v17.1.1:
+    - ✅ Orden de carga corregido (Database → Brain → UI)
+    - ✅ Brain ahora puede ejecutar comandos de Database
     
 ═══════════════════════════════════════════════════════════════════════════════]]
 
@@ -29,7 +33,7 @@ local GITHUB_REPO = "https://raw.githubusercontent.com/Moliinier/TycoonAI/main/"
 print("\n")
 print("╔═══════════════════════════════════════════════════════════════════════════════╗")
 print("║                                                                               ║")
-print("║                    🧠 TYCOON AI ASSISTANT v17.1                               ║")
+print("║                    🧠 TYCOON AI ASSISTANT v17.1.1 FIXED                       ║")
 print("║                        MASTER SCRIPT UNIFICADO                                ║")
 print("║                                                                               ║")
 print("╚═══════════════════════════════════════════════════════════════════════════════╝")
@@ -40,7 +44,7 @@ print("\n")
 -- ═══════════════════════════════════════════════════════════════════════════
 
 _G.TycoonAI = _G.TycoonAI or {}
-_G.TycoonAI.Version = "17.1 MASTER"
+_G.TycoonAI.Version = "17.1.1 MASTER FIXED"
 _G.TycoonAI.LoadTime = tick()
 _G.TycoonAI.Status = {
     BrainLoaded = false,
@@ -95,34 +99,34 @@ local function LoadScript(scriptName, url, maxRetries)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 🚀 CARGAR TODOS LOS COMPONENTES
+-- 🚀 CARGAR TODOS LOS COMPONENTES (ORDEN CORRECTO: Database → Brain → UI)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 print("\n╔═══════════════════════════════════════╗")
 print("║   🔄 CARGANDO COMPONENTES...          ║")
 print("╚═══════════════════════════════════════╝")
 
--- 1. CARGAR BRAIN SYSTEM
-print("\n[1/4] 🧠 Brain System")
-print("      Cargando 5 IAs integradas...")
-if LoadScript("Brain.lua", GITHUB_REPO .. "Brain.lua") then
-    _G.TycoonAI.Status.BrainLoaded = true
-    wait(0.5)
-end
-
--- 2. CARGAR DATABASE PART 1
-print("\n[2/4] 📚 Database Part 1")
+-- 1. CARGAR DATABASE PART 1 PRIMERO (El Brain necesita esto)
+print("\n[1/4] 📚 Database Part 1")
 print("      Cargando comandos 1-18...")
 if LoadScript("Database_Part1.lua", GITHUB_REPO .. "Database_Part1.lua") then
     _G.TycoonAI.Status.Database1Loaded = true
     wait(0.5)
 end
 
--- 3. CARGAR DATABASE PART 2
-print("\n[3/4] 📚 Database Part 2")
+-- 2. CARGAR DATABASE PART 2
+print("\n[2/4] 📚 Database Part 2")
 print("      Cargando comandos 19-44...")
 if LoadScript("Database_Part2.lua", GITHUB_REPO .. "Database_Part2.lua") then
     _G.TycoonAI.Status.Database2Loaded = true
+    wait(0.5)
+end
+
+-- 3. CARGAR BRAIN SYSTEM (Ahora puede acceder a la Database)
+print("\n[3/4] 🧠 Brain System")
+print("      Cargando 5 IAs integradas...")
+if LoadScript("Brain.lua", GITHUB_REPO .. "Brain.lua") then
+    _G.TycoonAI.Status.BrainLoaded = true
     wait(0.5)
 end
 
@@ -155,9 +159,9 @@ local function printStatus(name, status)
     print("║  " .. icon .. " " .. name .. ": " .. text .. string.rep(" ", 45 - #name) .. "║")
 end
 
-printStatus("🧠 Brain System      ", _G.TycoonAI.Status.BrainLoaded)
 printStatus("📚 Database Part 1   ", _G.TycoonAI.Status.Database1Loaded)
 printStatus("📚 Database Part 2   ", _G.TycoonAI.Status.Database2Loaded)
+printStatus("🧠 Brain System      ", _G.TycoonAI.Status.BrainLoaded)
 printStatus("🎨 UI System         ", _G.TycoonAI.Status.UILoaded)
 
 print("╠═══════════════════════════════════════════════════════════════════════════════╣")
@@ -167,7 +171,7 @@ if _G.TycoonAI.Status.Ready then
     print("╠═══════════════════════════════════════════════════════════════════════════════╣")
     print("║  💬 Chat IA: ACTIVO                                                           ║")
     print("║  📱 UI Compacta: 320x400                                                      ║")
-    print("║  🎮 Comandos: 67 disponibles                                                  ║")
+    print("║  🎮 Comandos: 44 disponibles                                                  ║")
     print("║  ⏱️  Tiempo de carga: " .. string.format("%.2f", tick() - _G.TycoonAI.LoadTime) .. "s" .. string.rep(" ", 52) .. "║")
 else
     print("║                       ⚠️ SISTEMA STATUS: PARCIAL                             ║")
@@ -188,7 +192,7 @@ if _G.TycoonAI.Status.Ready then
     -- Función de ayuda
     _G.ShowHelp = function()
         print("\n╔═══════════════════════════════════════════════════════════════╗")
-        print("║              🧠 TYCOON AI v17.1 - AYUDA RÁPIDA                ║")
+        print("║              🧠 TYCOON AI v17.1.1 - AYUDA RÁPIDA              ║")
         print("╠═══════════════════════════════════════════════════════════════╣")
         print("║                                                               ║")
         print("║  📝 COMANDOS DISPONIBLES:                                     ║")
@@ -196,7 +200,7 @@ if _G.TycoonAI.Status.Ready then
         print("║  💬 Chat: Escribe en la ventana de chat                      ║")
         print("║     'velocidad', 'salto', 'menu', 'particulas'...           ║")
         print("║                                                               ║")
-        print("║  📋 _G.ExecuteCommand('velocidad')                           ║")
+        print("║  📋 _G.ExecuteCommand('velocidad 100')                       ║")
         print("║     → Ejecuta comando directamente                           ║")
         print("║                                                               ║")
         print("║  🧠 _G.TycoonAI.Brain:ProcessIntelligently('texto')          ║")
@@ -206,7 +210,7 @@ if _G.TycoonAI.Status.Ready then
         print("║     → Ver estadísticas del sistema                           ║")
         print("║                                                               ║")
         print("╠═══════════════════════════════════════════════════════════════╣")
-        print("║  🎯 67 COMANDOS EN 16 CATEGORÍAS                             ║")
+        print("║  🎯 44 COMANDOS EN 16 CATEGORÍAS                             ║")
         print("║                                                               ║")
         print("║  ⚡ Movimiento  🎨 UI  🌈 Efectos  🎮 Controles              ║")
         print("║  🛠️  Utilidades  💰 Economía  📦 Templates  🔧 Sistema      ║")
@@ -232,18 +236,20 @@ if _G.TycoonAI.Status.Ready then
             version = _G.TycoonAI.Version,
             status = _G.TycoonAI.Status,
             uptime = tick() - _G.TycoonAI.LoadTime,
-            ready = _G.TycoonAI.Status.Ready
+            ready = _G.TycoonAI.Status.Ready,
+            database_loaded = _G.TycoonAI.Database and true or false
         }
     end
     
     -- Mensaje de bienvenida
     print("🎉 ¡TYCOON AI ESTÁ LISTO!")
     print("💬 Busca la ventana de chat en pantalla")
-    print("📝 Escribe: _G.ShowHelp() para ver comandos\n")
+    print("📝 Escribe: _G.ShowHelp() para ver comandos")
+    print("🧪 Prueba: _G.ExecuteCommand('velocidad 100')\n")
     
     -- Notificación en juego
     game.StarterGui:SetCore("SendNotification", {
-        Title = "✅ TYCOON AI v17.1",
+        Title = "✅ TYCOON AI v17.1.1",
         Text = "Sistema completo cargado!\n5 IAs trabajando para ti 💙",
         Duration = 5
     })
@@ -255,7 +261,12 @@ else
     print("💡 Solución:")
     print("   1. Verifica tu conexión a internet")
     print("   2. Asegúrate que HttpService esté habilitado")
-    print("   3. Intenta ejecutar el script de nuevo\n")
+    print("   3. Verifica que los archivos estén en GitHub:")
+    print("      - Brain.lua")
+    print("      - Database_Part1.lua")
+    print("      - Database_Part2.lua")
+    print("      - UI.lua")
+    print("   4. Intenta ejecutar el script de nuevo\n")
     
     game.StarterGui:SetCore("SendNotification", {
         Title = "⚠️ TycoonAI",
@@ -278,6 +289,7 @@ print("║                                                               ║")
 print("║                    💙🤖✨                                       ║")
 print("║                                                               ║")
 print("║  Creado por: DeepSeek, Claude, ChatGPT, Gemini, Haiku        ║")
+print("║  Corregido por: Claude Sonnet 4.5                            ║")
 print("║                                                               ║")
 print("╚═══════════════════════════════════════════════════════════════╝\n")
 
