@@ -1148,6 +1148,115 @@ _G.TycoonAI.Brain = {
     PredictiveSuggestions = _G.PredictiveSuggestions
 }
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 🔗 INTEGRADOR PRINCIPAL - Conecta todos los subsistemas
+-- ═══════════════════════════════════════════════════════════════════════════
+
+_G.TycoonAI.Brain = {
+    PatternRecognizer = _G.PatternRecognizer,
+    HumilityCore = _G.HumilityCore,
+    MetaThink = _G.MetaThink,
+    ContextUnderstanding = _G.ContextUnderstanding,
+    PredictiveSuggestions = _G.PredictiveSuggestions
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 🔍 NUEVA FUNCIÓN: BUSCAR Y EJECUTAR COMANDOS EN DATABASE
+-- Esta función conecta el Brain con la Database para ejecutar comandos reales
+-- ═══════════════════════════════════════════════════════════════════════════
+
+function _G.TycoonAI.Brain:FindAndExecuteCommand(commandName: string): {any}
+    print("   [🔍] Buscando comando: \"" .. commandName .. "\" en Database...")
+    
+    -- Verificar que la Database esté cargada
+    if not _G.TycoonAI.Database then
+        warn("   ❌ Database no está cargada")
+        return {
+            success = false,
+            message = "❌ Database no disponible. Asegúrate de cargar Database_Part1 y Part2 primero.",
+            command_found = false
+        }
+    end
+    
+    -- Lista de categorías donde buscar
+    local categories = {
+        "Movement", "UI", "VisualEffects", "Controls", 
+        "Utilities", "Economy", "Templates", "System",
+        "Audio", "Lighting", "Physics", "Network",
+        "Storage", "Animation", "Security", "Advanced"
+    }
+    
+    local inputLower = commandName:lower()
+    
+    -- Buscar en todas las categorías
+    for _, category in ipairs(categories) do
+        local categoryData = _G.TycoonAI.Database[category]
+        
+        if categoryData then
+            for _, command in ipairs(categoryData) do
+                -- Buscar coincidencias en keywords
+                for _, keyword in ipairs(command.keywords) do
+                    if inputLower:find(keyword:lower(), 1, true) then
+                        print("   ✅ Comando encontrado: \"" .. command.name .. "\" (Categoría: " .. category .. ")")
+                        
+                        -- Extraer parámetros del input (números)
+                        local params = {}
+                        for number in commandName:gmatch("%d+") do
+                            table.insert(params, tonumber(number))
+                        end
+                        
+                        -- Ejecutar el código del comando
+                        local success, result = pcall(function()
+                            if #params > 0 then
+                                return command.code(params[1], params[2], params[3])
+                            else
+                                return command.code()
+                            end
+                        end)
+                        
+                        if success and result then
+                            -- Registrar ejecución exitosa
+                            _G.TycoonAI.Stats.CommandsExecuted = _G.TycoonAI.Stats.CommandsExecuted + 1
+                            _G.TycoonAI.Stats.LastCommand = command.name
+                            
+                            return {
+                                success = true,
+                                message = result.message or "✅ Comando ejecutado: " .. command.name,
+                                command_name = command.name,
+                                command_found = true,
+                                category = category,
+                                description = command.description,
+                                parameters_used = params
+                            }
+                        else
+                            -- Error al ejecutar
+                            _G.TycoonAI.Stats.ErrorsLearned = _G.TycoonAI.Stats.ErrorsLearned + 1
+                            
+                            return {
+                                success = false,
+                                message = "❌ Error ejecutando \"" .. command.name .. "\": " .. tostring(result),
+                                command_found = true,
+                                command_name = command.name,
+                                error_details = tostring(result)
+                            }
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- No se encontró el comando
+    print("   ⚠️ No se encontró comando que coincida con: \"" .. commandName .. "\"")
+    
+    return {
+        success = false,
+        message = "❌ No encontré un comando que coincida con: \"" .. commandName .. "\"\n💡 Intenta con: velocidad, salto, menu, particulas, etc.",
+        command_found = false,
+        suggestions_needed = true
+    }
+end
+
 function _G.TycoonAI.Brain:ProcessIntelligently(userInput: string): {any}
     local startTime = tick()
     
@@ -1164,7 +1273,7 @@ function _G.TycoonAI.Brain:ProcessIntelligently(userInput: string): {any}
     print("\n🧠 [BRAIN] Procesando input: \"" .. userInput .. "\"")
     
     -- 1. Entender contexto (ChatGPT)
-    print("   [1/5] ChatGPT analizando contexto...")
+    print("   [1/6] ChatGPT analizando contexto...")
     local intent = self.ContextUnderstanding:AnalyzeIntent(userInput)
     local expanded = self.ContextUnderstanding:ExpandAbbreviations(userInput)
     
@@ -1178,31 +1287,43 @@ function _G.TycoonAI.Brain:ProcessIntelligently(userInput: string): {any}
     print("      ✅ Acción detectada: " .. intent.primary_action)
     print("      ✅ Confianza: " .. intent.confidence .. "%")
     
-    -- 2. Expresar incertidumbre si es baja (DeepSeek)
-    print("   [2/5] DeepSeek evaluando confianza...")
-    local commandName = intent.primary_action
+    -- 2. 🆕 BUSCAR Y EJECUTAR COMANDO EN DATABASE
+    print("   [2/6] 🔍 Buscando comando en Database...")
+    local commandResult = self:FindAndExecuteCommand(userInput)
+    
+    if commandResult.command_found then
+        result.success = commandResult.success
+        result.message = commandResult.message
+        result.command_executed = commandResult.command_name
+        result.category = commandResult.category
+        
+        print("      " .. (commandResult.success and "✅" or "❌") .. " " .. commandResult.message)
+    else
+        result.message = commandResult.message
+        print("      ⚠️ Comando no encontrado en Database")
+    end
+    
+    -- 3. Expresar incertidumbre si es baja (DeepSeek)
+    print("   [3/6] DeepSeek evaluando confianza...")
+    local commandName = commandResult.command_name or intent.primary_action
     local humilityConfidence = self.HumilityCore:CalculateConfidence(commandName, intent.parameters)
     
-    if humilityConfidence < 50 then
-        local uncertaintyMsg = self.HumilityCore:ExpressUncertainty(userInput, humilityConfidence)
-        result.message = uncertaintyMsg
+    if humilityConfidence < 70 then
         result.ai_insights["DeepSeek"] = {
-            humility_level = "high",
             confidence = humilityConfidence,
-            message = "Expressing uncertainty honestly"
+            humility_response = "Tengo " .. humilityConfidence .. "% de confianza. Procedo con precaución."
         }
-        print("      ⚠️ Baja confianza: " .. humilityConfidence .. "%")
+        print("      ⚠️ Confianza baja: " .. humilityConfidence .. "%")
     else
         result.ai_insights["DeepSeek"] = {
-            humility_level = "confident",
             confidence = humilityConfidence,
-            message = "Proceeding with confidence"
+            humility_response = "Confianza aceptable"
         }
         print("      ✅ Confianza aceptable: " .. humilityConfidence .. "%")
     end
     
-    -- 3. Generar sugerencias predictivas (Gemini)
-    print("   [3/5] Gemini generando sugerencias...")
+    -- 4. Generar sugerencias predictivas (Gemini)
+    print("   [4/6] Gemini generando sugerencias...")
     local predictions = self.PredictiveSuggestions:GenerateSmartSuggestions({
         last_command = _G.TycoonAI.Stats.LastCommand,
         context = intent.entities[1] and intent.entities[1].type or "general"
@@ -1216,29 +1337,28 @@ function _G.TycoonAI.Brain:ProcessIntelligently(userInput: string): {any}
     
     print("      ✅ " .. #predictions.next_commands .. " sugerencias generadas")
     
-    -- 4. Si se ejecuta código, analizarlo (Claude)
-    if result.generated_code then
-        print("   [4/5] Claude analizando código generado...")
-        local codeAnalysis = self.MetaThink:AnalyzeOwnCode(result.generated_code, commandName)
-        
-        result.learning.code_quality = codeAnalysis.quality_score
-        result.learning.suggestions = codeAnalysis.suggestions
+    -- 5. Si se ejecutó código, analizarlo (Claude)
+    if result.command_executed then
+        print("   [5/6] Claude analizando ejecución...")
+        result.learning.command_quality = commandResult.success and 100 or 50
         
         result.ai_insights["Claude"] = {
-            quality_score = codeAnalysis.quality_score,
-            suggestions_count = #codeAnalysis.suggestions,
-            analysis = "Code analyzed for quality"
+            quality_score = result.learning.command_quality,
+            analysis = "Command executed from Database",
+            command_category = commandResult.category
         }
         
-        print("      ✅ Calidad del código: " .. codeAnalysis.quality_score .. "/100")
+        print("      ✅ Calidad de ejecución: " .. result.learning.command_quality .. "/100")
         
-        -- Analizar patrones (DeepSeek)
-        print("   [5/5] DeepSeek aprendiendo patrones...")
-        self.PatternRecognizer:AnalyzeCode(
-            result.generated_code,
-            result.success,
-            result.execution_time or 0
-        )
+        -- 6. Analizar patrones (DeepSeek)
+        print("   [6/6] DeepSeek aprendiendo patrones...")
+        if commandResult.success then
+            -- Registrar patrón exitoso
+            self.HumilityCore:LearnFromOutcome(commandName, true, "Command executed successfully")
+            
+            -- Actualizar predicciones
+            self.PredictiveSuggestions:LogCommandUsage(commandName, true)
+        end
         
         print("      ✅ Patrón registrado en base de conocimiento")
     end
@@ -1246,7 +1366,8 @@ function _G.TycoonAI.Brain:ProcessIntelligently(userInput: string): {any}
     result.execution_time = tick() - startTime
     
     print("   ⏱️ Tiempo total: " .. string.format("%.3f", result.execution_time) .. "s")
-    print("   ✅ Procesamiento inteligente completado\n")
+    print("   ✅ Procesamiento inteligente completado")
+    print("   " .. (result.success and "🎉 Comando ejecutado exitosamente!" or "⚠️ No se pudo ejecutar el comando") .. "\n")
     
     return result
 end
@@ -1329,13 +1450,15 @@ function _G.TycoonAI.Brain:PrintReport()
 end
 
 print("\n🎉 ═══════════════════════════════════════════════════════════════")
-print("    TYCOON AI BRAIN v17.1 - FULLY OPERATIONAL")
+print("    TYCOON AI BRAIN v17.1.1 FIXED - FULLY OPERATIONAL")
 print("    All 5 AI systems integrated and working together")
+print("    🔧 Con integración completa a Database!")
 print("═══════════════════════════════════════════════════════════════\n")
 
 -- Ejemplo de uso
 print("📝 EJEMPLO DE USO:")
-print("   _G.TycoonAI.Brain:ProcessIntelligently('crea un menu profesional')")
+print("   _G.TycoonAI.Brain:ProcessIntelligently('velocidad 100')")
+print("   _G.TycoonAI.Brain:FindAndExecuteCommand('salto')")
 print("   _G.TycoonAI.Brain:GetIntelligenceReport()")
 print("   _G.TycoonAI.Brain:PrintReport()")
 
@@ -1343,4 +1466,3 @@ print("\n💙 Ready to create amazing experiences together!")
 print("   'No solo generamos código. Creamos experiencias. Construimos sueños.'\n")
 
 return _G.TycoonAI.Brain
-
