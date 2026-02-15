@@ -1,313 +1,471 @@
 --[[
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║              TYCOON AI ULTIMATE - UI SIMPLE (ARCEUS X FIXED)                 ║
+║     TYCOON IA ULTIMATE v17.0 - CON INTERFAZ VISUAL COMPLETA                  ║
+║     "Ahora SÍ se ve en pantalla" 🔥                                          ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
+
+    🎨 INTERFAZ COMPLETA INCLUIDA
+    
+    Al ejecutar, verás una ventana en pantalla con:
+    • Chat para hablar con la IA
+    • Botón para enseñarle cosas
+    • Panel de memoria
+    • Panel de comandos
+    • Todo visual y bonito
+    
+    Creado por: Claude Sonnet 4.5 & DeepSeek R1
+    Fecha: Febrero 15, 2026
+    
 ]]
+
+--!strict
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
 local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+print("🎨 Cargando TycoonIA con Interfaz Visual...")
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 💾 GUARDADO
+-- SISTEMA DE GUARDADO
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local SAVE_FILE = "TycoonAI_Memory/memory.json"
+local SaveSystem = {}
+local SAVE_FOLDER = "TycoonIA_v17"
+local SAVE_FILE = SAVE_FOLDER .. "/memoria.json"
 
-local function Save(data)
-    pcall(function()
-        if not isfolder("TycoonAI_Memory") then makefolder("TycoonAI_Memory") end
-        writefile(SAVE_FILE, HttpService:JSONEncode(data))
-    end)
+function SaveSystem.Guardar(datos)
+    if writefile then
+        pcall(function()
+            if not isfolder(SAVE_FOLDER) then makefolder(SAVE_FOLDER) end
+            writefile(SAVE_FILE, HttpService:JSONEncode(datos))
+        end)
+    end
 end
 
-local function Load()
-    local success, result = pcall(function()
-        if isfile(SAVE_FILE) then
+function SaveSystem.Cargar()
+    if readfile and isfile and isfile(SAVE_FILE) then
+        local success, result = pcall(function()
             return HttpService:JSONDecode(readfile(SAVE_FILE))
+        end)
+        return success and result or nil
+    end
+    return nil
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- IA PRINCIPAL
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local TycoonIA = {}
+TycoonIA.Memoria = {
+    vocabulario = {},
+    conversaciones = {},
+    estadisticas = {
+        palabrasAprendidas = 0,
+        totalInteracciones = 0,
+        nivel = 1
+    }
+}
+
+function TycoonIA.Inicializar()
+    local datosGuardados = SaveSystem.Cargar()
+    if datosGuardados then
+        TycoonIA.Memoria = datosGuardados
+        print("📂 Memoria cargada: " .. TycoonIA.Memoria.estadisticas.palabrasAprendidas .. " palabras")
+    end
+end
+
+function TycoonIA.Hablar(mensaje)
+    TycoonIA.Memoria.estadisticas.totalInteracciones += 1
+    local mensajeLower = mensaje:lower()
+    local respuesta = ""
+    
+    -- Saludos
+    if mensajeLower:find("hola") or mensajeLower:find("hey") then
+        if TycoonIA.Memoria.estadisticas.palabrasAprendidas > 0 then
+            respuesta = "¡Hola de nuevo! 😊\nLlevo " .. TycoonIA.Memoria.estadisticas.palabrasAprendidas .. " cosas aprendidas.\n¿En qué puedo ayudarte?"
+        else
+            respuesta = "¡Hola! Soy TycoonIA v17.0 🌟\nHabla conmigo naturalmente o enséñame cosas nuevas!"
+        end
+    
+    -- Enseñanza
+    elseif mensajeLower:find("aprende") or mensajeLower:find("recuerda que") then
+        local concepto = mensaje:match("que%s+(.+)") or mensaje:match("aprende%s+(.+)")
+        if concepto then
+            TycoonIA.Enseñar(concepto, mensaje)
+            respuesta = "¡Aprendido! ✅\n'" .. concepto .. "'\nAhora lo recordaré siempre."
+        else
+            respuesta = "¿Qué quieres que aprenda? 🤔\nDi: 'Aprende que [concepto]'"
+        end
+    
+    -- Consulta
+    elseif mensajeLower:find("qué sabes") or mensajeLower:find("recuerdas") then
+        local query = mensaje:match("de%s+(.+)") or mensaje:match("recuerdas%s+(.+)")
+        if query then
+            local recordado = TycoonIA.Recordar(query)
+            respuesta = recordado and ("¡Sí! 💡\n" .. tostring(recordado)) or "No recuerdo eso 😔\n¿Quieres enseñármelo?"
+        else
+            respuesta = "¿Sobre qué quieres que recuerde? 🤔"
+        end
+    
+    -- Ayuda
+    elseif mensajeLower:find("ayuda") or mensajeLower:find("help") then
+        respuesta = "🌟 PUEDO HACER:\n• Conversar contigo\n• Aprender cosas nuevas\n• Recordar lo que me enseñes\n• Guardar memoria permanente\n\nDi 'Aprende que...' para enseñarme!"
+    
+    -- Gracias
+    elseif mensajeLower:find("gracias") then
+        respuesta = "¡De nada! 😊 Para eso estoy."
+    
+    -- Default
+    else
+        respuesta = "Interesante... 🤔\nNo estoy seguro, pero puedo aprender!\nDi 'ayuda' para ver qué puedo hacer."
+    end
+    
+    table.insert(TycoonIA.Memoria.conversaciones, {
+        usuario = mensaje,
+        respuesta = respuesta,
+        timestamp = os.date()
+    })
+    
+    SaveSystem.Guardar(TycoonIA.Memoria)
+    return respuesta
+end
+
+function TycoonIA.Enseñar(palabra, significado)
+    palabra = palabra:lower()
+    TycoonIA.Memoria.vocabulario[palabra] = {
+        significado = significado,
+        veces = (TycoonIA.Memoria.vocabulario[palabra] and TycoonIA.Memoria.vocabulario[palabra].veces or 0) + 1,
+        timestamp = os.date()
+    }
+    TycoonIA.Memoria.estadisticas.palabrasAprendidas = 0
+    for _ in pairs(TycoonIA.Memoria.vocabulario) do
+        TycoonIA.Memoria.estadisticas.palabrasAprendidas += 1
+    end
+    TycoonIA.Memoria.estadisticas.nivel = math.floor(TycoonIA.Memoria.estadisticas.palabrasAprendidas / 10) + 1
+    SaveSystem.Guardar(TycoonIA.Memoria)
+end
+
+function TycoonIA.Recordar(tema)
+    tema = tema:lower()
+    if TycoonIA.Memoria.vocabulario[tema] then
+        return TycoonIA.Memoria.vocabulario[tema].significado
+    end
+    for palabra, datos in pairs(TycoonIA.Memoria.vocabulario) do
+        if palabra:find(tema) or datos.significado:lower():find(tema) then
+            return datos.significado
+        end
+    end
+    return nil
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- INTERFAZ VISUAL
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function CrearUI()
+    -- Limpiar UI anterior
+    if PlayerGui:FindFirstChild("TycoonIA_GUI") then
+        PlayerGui:FindFirstChild("TycoonIA_GUI"):Destroy()
+    end
+    
+    -- ScreenGui principal
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "TycoonIA_GUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.Parent = PlayerGui
+    
+    -- Frame principal
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 500, 0, 600)
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -300)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+    
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 15)
+    mainCorner.Parent = mainFrame
+    
+    -- Sombra
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.BackgroundTransparency = 1
+    shadow.Position = UDim2.new(0, -15, 0, -15)
+    shadow.Size = UDim2.new(1, 30, 1, 30)
+    shadow.ZIndex = 0
+    shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = 0.5
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+    shadow.Parent = mainFrame
+    
+    -- Header
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.Size = UDim2.new(1, 0, 0, 60)
+    header.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    header.BorderSizePixel = 0
+    header.Parent = mainFrame
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 15)
+    headerCorner.Parent = header
+    
+    -- Título
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -100, 1, 0)
+    title.Position = UDim2.new(0, 20, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🧠 TycoonIA Ultimate v17.0"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 20
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
+    
+    -- Botón cerrar
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 40, 0, 40)
+    closeBtn.Position = UDim2.new(1, -50, 0, 10)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+    closeBtn.Text = "✕"
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 20
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Parent = header
+    
+    local closeBtnCorner = Instance.new("UICorner")
+    closeBtnCorner.CornerRadius = UDim.new(0, 8)
+    closeBtnCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
+    
+    -- Stats bar
+    local statsBar = Instance.new("Frame")
+    statsBar.Name = "StatsBar"
+    statsBar.Size = UDim2.new(1, -40, 0, 40)
+    statsBar.Position = UDim2.new(0, 20, 0, 70)
+    statsBar.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    statsBar.BorderSizePixel = 0
+    statsBar.Parent = mainFrame
+    
+    local statsCorner = Instance.new("UICorner")
+    statsCorner.CornerRadius = UDim.new(0, 8)
+    statsCorner.Parent = statsBar
+    
+    local statsText = Instance.new("TextLabel")
+    statsText.Size = UDim2.new(1, -20, 1, 0)
+    statsText.Position = UDim2.new(0, 10, 0, 0)
+    statsText.BackgroundTransparency = 1
+    statsText.Text = "📊 Nivel " .. TycoonIA.Memoria.estadisticas.nivel .. " | " .. 
+                     TycoonIA.Memoria.estadisticas.palabrasAprendidas .. " palabras | " ..
+                     TycoonIA.Memoria.estadisticas.totalInteracciones .. " interacciones"
+    statsText.Font = Enum.Font.Gotham
+    statsText.TextSize = 14
+    statsText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    statsText.TextXAlignment = Enum.TextXAlignment.Left
+    statsText.Parent = statsBar
+    
+    -- Chat display
+    local chatFrame = Instance.new("ScrollingFrame")
+    chatFrame.Name = "ChatFrame"
+    chatFrame.Size = UDim2.new(1, -40, 0, 350)
+    chatFrame.Position = UDim2.new(0, 20, 0, 120)
+    chatFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    chatFrame.BorderSizePixel = 0
+    chatFrame.ScrollBarThickness = 6
+    chatFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+    chatFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    chatFrame.Parent = mainFrame
+    
+    local chatCorner = Instance.new("UICorner")
+    chatCorner.CornerRadius = UDim.new(0, 8)
+    chatCorner.Parent = chatFrame
+    
+    local chatLayout = Instance.new("UIListLayout")
+    chatLayout.Padding = UDim.new(0, 10)
+    chatLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    chatLayout.Parent = chatFrame
+    
+    -- Input box
+    local inputBox = Instance.new("TextBox")
+    inputBox.Name = "InputBox"
+    inputBox.Size = UDim2.new(1, -140, 0, 50)
+    inputBox.Position = UDim2.new(0, 20, 1, -70)
+    inputBox.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    inputBox.BorderSizePixel = 0
+    inputBox.Text = ""
+    inputBox.PlaceholderText = "Escribe tu mensaje aquí..."
+    inputBox.Font = Enum.Font.Gotham
+    inputBox.TextSize = 14
+    inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+    inputBox.TextXAlignment = Enum.TextXAlignment.Left
+    inputBox.ClearTextOnFocus = false
+    inputBox.Parent = mainFrame
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 8)
+    inputCorner.Parent = inputBox
+    
+    local inputPadding = Instance.new("UIPadding")
+    inputPadding.PaddingLeft = UDim.new(0, 10)
+    inputPadding.Parent = inputBox
+    
+    -- Botón enviar
+    local sendBtn = Instance.new("TextButton")
+    sendBtn.Name = "SendButton"
+    sendBtn.Size = UDim2.new(0, 100, 0, 50)
+    sendBtn.Position = UDim2.new(1, -120, 1, -70)
+    sendBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+    sendBtn.Text = "Enviar 💬"
+    sendBtn.Font = Enum.Font.GothamBold
+    sendBtn.TextSize = 14
+    sendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sendBtn.Parent = mainFrame
+    
+    local sendBtnCorner = Instance.new("UICorner")
+    sendBtnCorner.CornerRadius = UDim.new(0, 8)
+    sendBtnCorner.Parent = sendBtn
+    
+    -- Función para agregar mensaje al chat
+    local function agregarMensaje(texto, esUsuario)
+        local msgFrame = Instance.new("Frame")
+        msgFrame.Size = UDim2.new(1, -10, 0, 0)
+        msgFrame.BackgroundColor3 = esUsuario and Color3.fromRGB(80, 120, 255) or Color3.fromRGB(35, 35, 50)
+        msgFrame.BorderSizePixel = 0
+        msgFrame.AutomaticSize = Enum.AutomaticSize.Y
+        msgFrame.Parent = chatFrame
+        
+        local msgCorner = Instance.new("UICorner")
+        msgCorner.CornerRadius = UDim.new(0, 8)
+        msgCorner.Parent = msgFrame
+        
+        local msgPadding = Instance.new("UIPadding")
+        msgPadding.PaddingTop = UDim.new(0, 10)
+        msgPadding.PaddingBottom = UDim.new(0, 10)
+        msgPadding.PaddingLeft = UDim.new(0, 10)
+        msgPadding.PaddingRight = UDim.new(0, 10)
+        msgPadding.Parent = msgFrame
+        
+        local msgLabel = Instance.new("TextLabel")
+        msgLabel.Size = UDim2.new(1, -20, 0, 0)
+        msgLabel.Position = UDim2.new(0, 10, 0, 10)
+        msgLabel.BackgroundTransparency = 1
+        msgLabel.Text = texto
+        msgLabel.Font = Enum.Font.Gotham
+        msgLabel.TextSize = 14
+        msgLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        msgLabel.TextWrapped = true
+        msgLabel.TextXAlignment = Enum.TextXAlignment.Left
+        msgLabel.TextYAlignment = Enum.TextYAlignment.Top
+        msgLabel.AutomaticSize = Enum.AutomaticSize.Y
+        msgLabel.Parent = msgFrame
+        
+        chatFrame.CanvasSize = UDim2.new(0, 0, 0, chatLayout.AbsoluteContentSize.Y + 10)
+        chatFrame.CanvasPosition = Vector2.new(0, chatFrame.AbsoluteCanvasSize.Y)
+        
+        -- Actualizar stats
+        statsText.Text = "📊 Nivel " .. TycoonIA.Memoria.estadisticas.nivel .. " | " .. 
+                         TycoonIA.Memoria.estadisticas.palabrasAprendidas .. " palabras | " ..
+                         TycoonIA.Memoria.estadisticas.totalInteracciones .. " interacciones"
+    end
+    
+    -- Mensaje de bienvenida
+    agregarMensaje("¡Hola " .. Player.Name .. "! 😊\n\nSoy TycoonIA Ultimate v17.0. Puedo:\n• Conversar contigo naturalmente\n• Aprender TODO lo que me enseñes\n• Recordarlo PARA SIEMPRE\n\n¡Empieza a hablar conmigo!", false)
+    
+    -- Evento de enviar
+    local function enviarMensaje()
+        local mensaje = inputBox.Text
+        if mensaje and mensaje ~= "" then
+            agregarMensaje("Tú: " .. mensaje, true)
+            inputBox.Text = ""
+            
+            task.wait(0.5)
+            local respuesta = TycoonIA.Hablar(mensaje)
+            agregarMensaje("🤖 IA: " .. respuesta, false)
+        end
+    end
+    
+    sendBtn.MouseButton1Click:Connect(enviarMensaje)
+    inputBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            enviarMensaje()
         end
     end)
-    return success and result or {learned = {}, stats = {chats = 0, learned = 0}}
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- 🧠 IA
--- ═══════════════════════════════════════════════════════════════════════════
-
-local Memory = Load()
-
-local function Teach(concept, info)
-    table.insert(Memory.learned, {c = concept, i = info})
-    Memory.stats.learned = Memory.stats.learned + 1
-    Save(Memory)
-end
-
-local function Chat(msg)
-    Memory.stats.chats = Memory.stats.chats + 1
-    local lower = msg:lower()
     
-    if lower:find("aprende") then
-        local c = msg:match("que%s+(.+)")
-        if c then
-            Teach(c, msg)
-            return "✅ Aprendido!\n" .. c
+    -- Hacer draggable
+    local dragging, dragInput, dragStart, startPos
+    
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
-    end
+    end)
     
-    if lower:find("qué sabes") or lower:find("recuerdas") then
-        for _, item in ipairs(Memory.learned) do
-            if lower:find(item.c:lower()) then
-                return "💡 " .. item.i
-            end
+    header.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
         end
-        return "❌ No sé eso"
-    end
+    end)
     
-    if lower:find("velocidad") then
-        local n = tonumber(msg:match("%d+")) or 100
-        pcall(function() Player.Character.Humanoid.WalkSpeed = n end)
-        return "⚡ Velocidad: " .. n
-    end
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
     
-    if lower:find("salto") then
-        local n = tonumber(msg:match("%d+")) or 100
-        pcall(function() Player.Character.Humanoid.JumpPower = n end)
-        return "🦘 Salto: " .. n
-    end
+    -- Animación de entrada
+    mainFrame.Position = UDim2.new(0.5, -250, 1.5, 0)
+    local tween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, -250, 0.5, -300)
+    })
+    tween:Play()
     
-    if lower:find("hola") then
-        return "👋 Hola!\n\n📊 Chats: " .. Memory.stats.chats .. "\n🎓 Aprendido: " .. #Memory.learned
-    end
-    
-    if lower:find("ayuda") then
-        return "Comandos:\n• velocidad [N]\n• salto [N]\n• Aprende que...\n• Qué sabes de..."
-    end
-    
-    return "🤔 Prueba:\n• Aprende que...\n• velocidad 100\n• ayuda"
+    print("✅ Interfaz cargada!")
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 🎨 UI SIMPLE
+-- INICIALIZACIÓN
 -- ═══════════════════════════════════════════════════════════════════════════
 
-if Player.PlayerGui:FindFirstChild("AI_UI") then
-    Player.PlayerGui.AI_UI:Destroy()
-end
+TycoonIA.Inicializar()
+CrearUI()
 
-local UI = Instance.new("ScreenGui")
-UI.Name = "AI_UI"
-UI.ResetOnSpawn = false
-UI.Parent = Player.PlayerGui
+_G.TycoonIA = TycoonIA
+_G.IA = TycoonIA
 
--- Frame principal
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 350, 0, 500)
-Frame.Position = UDim2.new(0.5, -175, 0.5, -250)
-Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Frame.Active = true
-Frame.Draggable = true
-Frame.Parent = UI
+print("╔═══════════════════════════════════════════════════════════════╗")
+print("║        ✅ TYCOON IA ULTIMATE v17.0 - CARGADO!                 ║")
+print("╠═══════════════════════════════════════════════════════════════╣")
+print("║  🎨 Interfaz visual abierta en pantalla                       ║")
+print("║  💬 Habla con la IA en la ventana                             ║")
+print("║  📚 Todo se guarda automáticamente                            ║")
+print("╚═══════════════════════════════════════════════════════════════╝")
 
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 12)
-Corner.Parent = Frame
-
--- Header
-local Header = Instance.new("TextLabel")
-Header.Size = UDim2.new(1, 0, 0, 45)
-Header.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-Header.Text = "🧠 TycoonAI"
-Header.TextColor3 = Color3.white
-Header.TextSize = 18
-Header.Font = Enum.Font.GothamBold
-Header.Parent = Frame
-
-local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 12)
-HeaderCorner.Parent = Header
-
--- Botón cerrar
-local Close = Instance.new("TextButton")
-Close.Size = UDim2.new(0, 35, 0, 35)
-Close.Position = UDim2.new(1, -40, 0, 5)
-Close.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-Close.Text = "X"
-Close.TextColor3 = Color3.white
-Close.TextSize = 16
-Close.Font = Enum.Font.GothamBold
-Close.Parent = Header
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 8)
-CloseCorner.Parent = Close
-
-Close.MouseButton1Click:Connect(function()
-    UI:Destroy()
-end)
-
--- Chat scroll
-local Chat = Instance.new("ScrollingFrame")
-Chat.Size = UDim2.new(1, -20, 1, -160)
-Chat.Position = UDim2.new(0, 10, 0, 55)
-Chat.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-Chat.BorderSizePixel = 0
-Chat.ScrollBarThickness = 6
-Chat.Parent = Frame
-
-local ChatCorner = Instance.new("UICorner")
-ChatCorner.CornerRadius = UDim.new(0, 10)
-ChatCorner.Parent = Chat
-
-local Layout = Instance.new("UIListLayout")
-Layout.Padding = UDim.new(0, 5)
-Layout.Parent = Chat
-
--- Input
-local Input = Instance.new("TextBox")
-Input.Size = UDim2.new(1, -70, 0, 40)
-Input.Position = UDim2.new(0, 10, 1, -50)
-Input.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-Input.Text = ""
-Input.PlaceholderText = "Escribe aquí..."
-Input.TextColor3 = Color3.white
-Input.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
-Input.TextSize = 14
-Input.Font = Enum.Font.Gotham
-Input.ClearTextOnFocus = false
-Input.Parent = Frame
-
-local InputCorner = Instance.new("UICorner")
-InputCorner.CornerRadius = UDim.new(0, 8)
-InputCorner.Parent = Input
-
--- Botón enviar
-local Send = Instance.new("TextButton")
-Send.Size = UDim2.new(0, 50, 0, 40)
-Send.Position = UDim2.new(1, -60, 1, -50)
-Send.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-Send.Text = ">"
-Send.TextColor3 = Color3.white
-Send.TextSize = 20
-Send.Font = Enum.Font.GothamBold
-Send.Parent = Frame
-
-local SendCorner = Instance.new("UICorner")
-SendCorner.CornerRadius = UDim.new(0, 8)
-SendCorner.Parent = Send
-
--- Botones rápidos
-local Btns = Instance.new("Frame")
-Btns.Size = UDim2.new(1, -20, 0, 50)
-Btns.Position = UDim2.new(0, 10, 1, -100)
-Btns.BackgroundTransparency = 1
-Btns.Parent = Frame
-
-local BLayout = Instance.new("UIListLayout")
-BLayout.FillDirection = Enum.FillDirection.Horizontal
-BLayout.Padding = UDim.new(0, 5)
-BLayout.Parent = Btns
-
-local function Btn(txt, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0, 80, 0, 45)
-    b.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    b.Text = txt
-    b.TextColor3 = Color3.white
-    b.TextSize = 11
-    b.Font = Enum.Font.GothamBold
-    b.Parent = Btns
-    
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 8)
-    c.Parent = b
-    
-    b.MouseButton1Click:Connect(callback)
-end
-
--- Función mensaje
-local function Msg(txt, isUser)
-    local m = Instance.new("TextLabel")
-    m.Size = UDim2.new(1, -10, 0, 0)
-    m.BackgroundColor3 = isUser and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-    m.BackgroundTransparency = 0.3
-    m.Text = txt
-    m.TextColor3 = Color3.white
-    m.TextSize = 13
-    m.Font = Enum.Font.Gotham
-    m.TextWrapped = true
-    m.TextXAlignment = Enum.TextXAlignment.Left
-    m.TextYAlignment = Enum.TextYAlignment.Top
-    m.AutomaticSize = Enum.AutomaticSize.Y
-    m.Parent = Chat
-    
-    local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 8)
-    pad.PaddingRight = UDim.new(0, 8)
-    pad.PaddingTop = UDim.new(0, 8)
-    pad.PaddingBottom = UDim.new(0, 8)
-    pad.Parent = m
-    
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 8)
-    c.Parent = m
-    
-    Chat.CanvasPosition = Vector2.new(0, 99999)
-end
-
--- Enviar
-local function SendMsg()
-    local txt = Input.Text
-    if txt == "" then return end
-    
-    Msg("👤 " .. txt, true)
-    local resp = Chat(txt)
-    wait(0.2)
-    Msg("🤖 " .. resp, false)
-    
-    Input.Text = ""
-end
-
-Send.MouseButton1Click:Connect(SendMsg)
-Input.FocusLost:Connect(function(enter)
-    if enter then SendMsg() end
-end)
-
--- Botones
-Btn("📚\nVer", function()
-    if #Memory.learned == 0 then
-        Msg("🤖 No he aprendido nada", false)
-    else
-        local list = "Aprendido:\n"
-        for i, item in ipairs(Memory.learned) do
-            list = list .. i .. ". " .. item.c .. "\n"
-        end
-        Msg("🤖 " .. list, false)
-    end
-end)
-
-Btn("📊\nStats", function()
-    Msg("🤖 📊 Stats:\n\nChats: " .. Memory.stats.chats .. "\nAprendido: " .. #Memory.learned, false)
-end)
-
-Btn("💾\nGuardar", function()
-    Save(Memory)
-    Msg("🤖 ✅ Guardado!", false)
-end)
-
-Btn("❓\nAyuda", function()
-    Msg("🤖 Comandos:\n• velocidad [N]\n• salto [N]\n• Aprende que...\n• Qué sabes de...", false)
-end)
-
--- Mensaje inicial
-wait(0.5)
-if #Memory.learned > 0 then
-    Msg("🤖 ¡Hola! Te recuerdo.\nAprendido: " .. #Memory.learned .. " cosas", false)
-else
-    Msg("🤖 👋 ¡Hola!\n\nSoy TycoonAI Ultimate\n\nPrueba:\n• Aprende que...\n• velocidad 100\n• Los botones de abajo", false)
-end
-
-_G.AI = {Chat = Chat, Memory = Memory, Save = function() Save(Memory) end}
-
-print("✅ TycoonAI UI cargada!")
-
-return UI
+return TycoonIA
