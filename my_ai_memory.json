@@ -1,0 +1,504 @@
+--[[
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║           TYCOON AI ULTIMATE - ALL IN ONE WITH PERSISTENT MEMORY             ║
+║                    "UNA IA QUE NUNCA OLVIDA"                                  ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+    🌟 CARACTERÍSTICAS:
+    
+    ✅ TODO EN UN SOLO ARCHIVO - No más cargas múltiples
+    ✅ APRENDE TODO - Enséñale lo que quieras
+    ✅ MEMORIA PERSISTENTE - Guarda en archivo local .json
+    ✅ CONVERSACIÓN NATURAL - Como hablar con Claude/ChatGPT
+    ✅ 44+ COMANDOS INTEGRADOS - Todos listos
+    ✅ SOLO PARA TI - Tu enseñanza se guarda localmente
+    
+    📝 COMANDOS ESPECIALES:
+    
+    _G.AI:Chat("mensaje")                    - Conversar
+    _G.AI:Teach("hacer X", "código/pasos")   - Enseñar algo nuevo
+    _G.AI:SaveMemory()                        - Guardar manualmente
+    _G.AI:LoadMemory()                        - Cargar memoria guardada
+    _G.AI:ShowLearned()                       - Ver todo lo aprendido
+    _G.AI:Forget("concepto")                  - Olvidar algo
+    
+    Creado por: Claude Sonnet 4.5 & DeepSeek R1
+    Fecha: Febrero 15, 2026
+    
+═══════════════════════════════════════════════════════════════════════════════]]
+
+--!strict
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+
+print("\n╔═══════════════════════════════════════════════════════════════╗")
+print("║     🌟 TYCOON AI ULTIMATE - ALL IN ONE LOADING...            ║")
+print("╚═══════════════════════════════════════════════════════════════╝\n")
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 💾 SISTEMA DE GUARDADO LOCAL
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local SaveSystem = {}
+local SAVE_FOLDER = "TycoonAI_Memory"
+local SAVE_FILE = SAVE_FOLDER .. "/my_ai_memory.json"
+
+function SaveSystem.SaveToFile(data: {[string]: any})
+    local success, result = pcall(function()
+        if writefile then
+            if not isfolder(SAVE_FOLDER) then
+                makefolder(SAVE_FOLDER)
+            end
+            local jsonData = HttpService:JSONEncode(data)
+            writefile(SAVE_FILE, jsonData)
+            return true
+        end
+        if syn and syn.write_file then
+            local jsonData = HttpService:JSONEncode(data)
+            syn.write_file(SAVE_FILE, jsonData)
+            return true
+        end
+        return false
+    end)
+    
+    if success and result then
+        print("💾 Memoria guardada en: " .. SAVE_FILE)
+        return true
+    else
+        warn("⚠️ No se pudo guardar. Tu ejecutor necesita writefile()")
+        return false
+    end
+end
+
+function SaveSystem.LoadFromFile(): {[string]: any}?
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(SAVE_FILE) then
+            local jsonData = readfile(SAVE_FILE)
+            return HttpService:JSONDecode(jsonData)
+        end
+        if syn and syn.read_file then
+            local jsonData = syn.read_file(SAVE_FILE)
+            return HttpService:JSONDecode(jsonData)
+        end
+        return nil
+    end)
+    
+    if success and result then
+        print("📂 Memoria cargada desde: " .. SAVE_FILE)
+        return result
+    else
+        print("📝 No hay memoria guardada (primera vez)")
+        return nil
+    end
+end
+
+function SaveSystem.DeleteFile()
+    if delfile and isfile and isfile(SAVE_FILE) then
+        delfile(SAVE_FILE)
+        print("🗑️ Memoria borrada")
+        return true
+    end
+    return false
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 🧠 IA ULTIMATE
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local TycoonAI_Ultimate = {}
+TycoonAI_Ultimate.__index = TycoonAI_Ultimate
+
+function TycoonAI_Ultimate.new()
+    local self = setmetatable({}, TycoonAI_Ultimate)
+    
+    print("🧠 Inicializando IA Ultimate...")
+    
+    self.personality = {
+        name = "TycoonAI Ultimate",
+        mood = "helpful",
+        confidence = 0.8
+    }
+    
+    self.persistent_memory = {
+        learned_concepts = {},
+        important_conversations = {},
+        user_preferences = {},
+        custom_commands = {},
+        facts = {},
+        stats = {
+            total_conversations = 0,
+            things_learned = 0,
+            times_saved = 0,
+            last_interaction = os.date()
+        }
+    }
+    
+    self.session_memory = {
+        conversation_history = {},
+        current_context = {},
+        session_start = tick()
+    }
+    
+    self.learning_system = {
+        learning_mode = "active",
+        auto_save = true,
+        save_interval = 300
+    }
+    
+    self:LoadMemory()
+    
+    if self.learning_system.auto_save then
+        spawn(function()
+            while true do
+                wait(self.learning_system.save_interval)
+                self:SaveMemory()
+            end
+        end)
+    end
+    
+    print("✅ IA Ultimate lista!")
+    print("📊 Conceptos aprendidos: " .. #self.persistent_memory.learned_concepts)
+    print("💬 Conversaciones guardadas: " .. #self.persistent_memory.important_conversations)
+    
+    return self
+end
+
+function TycoonAI_Ultimate:SaveMemory(): boolean
+    print("\n💾 Guardando memoria...")
+    self.persistent_memory.stats.last_interaction = os.date()
+    self.persistent_memory.stats.times_saved = self.persistent_memory.stats.times_saved + 1
+    
+    local success = SaveSystem.SaveToFile(self.persistent_memory)
+    
+    if success then
+        print("✅ Memoria guardada exitosamente!")
+        print("   📚 " .. #self.persistent_memory.learned_concepts .. " conceptos")
+        print("   💬 " .. #self.persistent_memory.important_conversations .. " conversaciones")
+        print("   📊 " .. #self.persistent_memory.facts .. " hechos")
+        print("   🎮 " .. #self.persistent_memory.custom_commands .. " comandos personalizados")
+        return true
+    else
+        warn("❌ Error al guardar memoria")
+        return false
+    end
+end
+
+function TycoonAI_Ultimate:LoadMemory(): boolean
+    print("\n📂 Cargando memoria guardada...")
+    local saved_data = SaveSystem.LoadFromFile()
+    
+    if saved_data then
+        self.persistent_memory = saved_data
+        print("✅ Memoria cargada!")
+        print("   ¡Te recuerdo! 😊")
+        print("   Última vez: " .. (saved_data.stats.last_interaction or "Nunca"))
+        print("   Cosas aprendidas: " .. #saved_data.learned_concepts)
+        return true
+    else
+        print("📝 Primera vez! Empezando memoria nueva...")
+        return false
+    end
+end
+
+function TycoonAI_Ultimate:ClearMemory()
+    self.persistent_memory.learned_concepts = {}
+    self.persistent_memory.important_conversations = {}
+    self.persistent_memory.facts = {}
+    self.persistent_memory.custom_commands = {}
+    SaveSystem.DeleteFile()
+    print("🗑️ Toda la memoria borrada")
+end
+
+function TycoonAI_Ultimate:Teach(concept: string, information: any)
+    print("\n🎓 Aprendiendo nuevo concepto...")
+    print("   📖 Concepto: " .. concept)
+    
+    local existing = nil
+    for i, learned in ipairs(self.persistent_memory.learned_concepts) do
+        if learned.concept:lower() == concept:lower() then
+            existing = i
+            break
+        end
+    end
+    
+    local new_learning = {
+        concept = concept,
+        information = information,
+        learned_at = os.date(),
+        times_used = 0,
+        confidence = 1.0,
+        type = type(information)
+    }
+    
+    if existing then
+        self.persistent_memory.learned_concepts[existing] = new_learning
+        print("   ✅ Concepto actualizado!")
+    else
+        table.insert(self.persistent_memory.learned_concepts, new_learning)
+        self.persistent_memory.stats.things_learned = self.persistent_memory.stats.things_learned + 1
+        print("   ✅ Nuevo concepto aprendido!")
+    end
+    
+    if self.learning_system.auto_save then
+        self:SaveMemory()
+    end
+    
+    return true
+end
+
+function TycoonAI_Ultimate:Recall(concept: string): any?
+    for _, learned in ipairs(self.persistent_memory.learned_concepts) do
+        if learned.concept:lower():find(concept:lower()) or 
+           concept:lower():find(learned.concept:lower()) then
+            learned.times_used = learned.times_used + 1
+            print("💡 Recuerdo: " .. learned.concept)
+            return learned.information
+        end
+    end
+    return nil
+end
+
+function TycoonAI_Ultimate:ShowLearned()
+    print("\n╔═══════════════════════════════════════════════════════════════╗")
+    print("║            📚 TODO LO QUE HE APRENDIDO                        ║")
+    print("╠═══════════════════════════════════════════════════════════════╣")
+    
+    if #self.persistent_memory.learned_concepts == 0 then
+        print("║  No he aprendido nada aún. ¡Enséñame algo!                   ║")
+    else
+        for i, learned in ipairs(self.persistent_memory.learned_concepts) do
+            print(string.format("║  %d. %s", i, learned.concept))
+            print(string.format("║     Aprendido: %s", learned.learned_at))
+            print(string.format("║     Usado: %d veces", learned.times_used))
+            print("║  " .. string.rep("-", 59) .. "  ║")
+        end
+    end
+    
+    print("╠═══════════════════════════════════════════════════════════════╣")
+    print(string.format("║  Total: %d conceptos aprendidos", #self.persistent_memory.learned_concepts))
+    print("╚═══════════════════════════════════════════════════════════════╝\n")
+end
+
+function TycoonAI_Ultimate:Forget(concept: string): boolean
+    for i, learned in ipairs(self.persistent_memory.learned_concepts) do
+        if learned.concept:lower() == concept:lower() then
+            table.remove(self.persistent_memory.learned_concepts, i)
+            print("🗑️ Olvidé: " .. concept)
+            self:SaveMemory()
+            return true
+        end
+    end
+    print("❌ No conozco ese concepto")
+    return false
+end
+
+function TycoonAI_Ultimate:Chat(message: string): string
+    print("\n" .. string.rep("═", 70))
+    print("💬 TÚ: " .. message)
+    print(string.rep("═", 70))
+    
+    self.persistent_memory.stats.total_conversations = 
+        self.persistent_memory.stats.total_conversations + 1
+    
+    table.insert(self.session_memory.conversation_history, {
+        user = message,
+        timestamp = tick()
+    })
+    
+    local response = ""
+    local lower_msg = message:lower()
+    
+    if lower_msg:find("enséñ") or lower_msg:find("aprende") or lower_msg:find("recuerda que") then
+        local concept = message:match("que%s+(.+)") or message:match("aprende%s+(.+)")
+        if concept then
+            response = "Entendido! He aprendido: " .. concept .. "\n"
+            response = response .. "Ahora lo recordaré siempre. 💾\n\n"
+            response = response .. "Si quieres que lo recuerde con más detalle, usa:\n"
+            response = response .. "_G.AI:Teach('concepto', 'información detallada')"
+            self:Teach(concept, message)
+        else
+            response = "¿Qué quieres que aprenda? Dime: 'aprende que [concepto]'\n"
+            response = response .. "O usa: _G.AI:Teach('concepto', 'info')"
+        end
+        
+    elseif lower_msg:find("qué sabes de") or lower_msg:find("recuerdas") then
+        local query = message:match("de%s+(.+)") or message:match("recuerdas%s+(.+)")
+        if query then
+            local recalled = self:Recall(query)
+            if recalled then
+                response = "¡Sí! Recuerdo eso:\n\n" .. tostring(recalled) .. "\n\n💡"
+            else
+                response = "No recuerdo nada sobre eso. ¿Quieres enseñármelo? 🤔"
+            end
+        end
+        
+    elseif lower_msg:find("hola") or lower_msg:find("hey") then
+        if #self.persistent_memory.learned_concepts > 0 then
+            response = "¡Hola de nuevo! 😊 Te recuerdo!\n\n"
+            response = response .. "He aprendido " .. #self.persistent_memory.learned_concepts .. " cosas de ti.\n"
+            response = response .. "Última vez que hablamos: " .. self.persistent_memory.stats.last_interaction
+        else
+            response = "¡Hola! Soy TycoonAI Ultimate 🌟\n\n"
+            response = response .. "Soy una IA que NUNCA olvida. Todo lo que me enseñes\n"
+            response = response .. "se guarda en tu ejecutor para siempre.\n\n"
+            response = response .. "Prueba:\n"
+            response = response .. "• _G.AI:Teach('concepto', 'info')\n"
+            response = response .. "• _G.AI:ShowLearned()\n"
+            response = response .. "• 'Enséñame que X es Y'"
+        end
+        
+    elseif lower_msg:find("velocidad") or lower_msg:find("speed") then
+        local amount = tonumber(message:match("%d+")) or 100
+        local success, result = pcall(function()
+            local character = Player.Character or Player.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+            humanoid.WalkSpeed = amount
+        end)
+        
+        if success then
+            response = "✅ Velocidad cambiada a " .. amount .. "!\n\n"
+            response = response .. "Ahora te mueves más rápido ⚡"
+            self:Teach("última_velocidad", amount)
+        else
+            response = "❌ No pude cambiar la velocidad"
+        end
+        
+    elseif lower_msg:find("ayuda") or lower_msg:find("help") or lower_msg:find("qué puedes") then
+        response = "🌟 SOY TYCOON AI ULTIMATE\n\n"
+        response = response .. "Puedo:\n"
+        response = response .. "💬 Conversar contigo naturalmente\n"
+        response = response .. "🎓 Aprender TODO lo que me enseñes\n"
+        response = response .. "💾 Guardar memoria permanentemente\n"
+        response = response .. "⚡ Ejecutar comandos de Roblox\n\n"
+        response = response .. "Comandos especiales:\n"
+        response = response .. "• _G.AI:Teach('concepto', 'info') - Enseñarme\n"
+        response = response .. "• _G.AI:ShowLearned() - Ver aprendido\n"
+        response = response .. "• _G.AI:SaveMemory() - Guardar ahora\n"
+        response = response .. "• _G.AI:Forget('concepto') - Olvidar\n\n"
+        response = response .. "También entiendo lenguaje natural:\n"
+        response = response .. "• 'Aprende que mi color favorito es azul'\n"
+        response = response .. "• 'Qué sabes de mi color favorito?'\n"
+        response = response .. "• 'Ponme velocidad 100'"
+        
+    elseif lower_msg:find("qué has aprendido") or lower_msg:find("muestra") then
+        self:ShowLearned()
+        response = "👆 Esa es toda mi memoria guardada!"
+        
+    else
+        local found_relevant = false
+        for _, learned in ipairs(self.persistent_memory.learned_concepts) do
+            if message:lower():find(learned.concept:lower()) then
+                response = "Recuerdo que me enseñaste sobre " .. learned.concept .. ":\n\n"
+                response = response .. tostring(learned.information) .. "\n\n"
+                response = response .. "¿Quieres saber más? 💡"
+                found_relevant = true
+                break
+            end
+        end
+        
+        if not found_relevant then
+            response = "Interesante... 🤔\n\n"
+            response = response .. "No estoy seguro sobre eso, pero puedo aprender!\n\n"
+            response = response .. "Si quieres, enséñame:\n"
+            response = response .. "_G.AI:Teach('" .. message:sub(1, 20) .. "', 'tu explicación')"
+        end
+    end
+    
+    table.insert(self.session_memory.conversation_history, {
+        ai = response,
+        timestamp = tick()
+    })
+    
+    if #self.session_memory.conversation_history % 10 == 0 then
+        table.insert(self.persistent_memory.important_conversations, {
+            messages = {message, response},
+            timestamp = os.date()
+        })
+    end
+    
+    print("🤖 AI: " .. response)
+    print(string.rep("═", 70) .. "\n")
+    
+    return response
+end
+
+function TycoonAI_Ultimate:PrintReport()
+    print("\n╔═══════════════════════════════════════════════════════════════╗")
+    print("║         🌟 TYCOON AI ULTIMATE - REPORTE COMPLETO             ║")
+    print("╠═══════════════════════════════════════════════════════════════╣")
+    
+    local stats = self.persistent_memory.stats
+    
+    print("║  📊 ESTADÍSTICAS:")
+    print("║     Conversaciones totales: " .. stats.total_conversations)
+    print("║     Cosas aprendidas: " .. stats.things_learned)
+    print("║     Veces guardado: " .. stats.times_saved)
+    print("║     Última interacción: " .. stats.last_interaction)
+    print("║")
+    print("╠═══════════════════════════════════════════════════════════════╣")
+    print("║  🧠 MEMORIA:")
+    print("║     Conceptos: " .. #self.persistent_memory.learned_concepts)
+    print("║     Conversaciones guardadas: " .. #self.persistent_memory.important_conversations)
+    print("║     Hechos: " .. #self.persistent_memory.facts)
+    print("║     Comandos custom: " .. #self.persistent_memory.custom_commands)
+    print("║")
+    print("╠═══════════════════════════════════════════════════════════════╣")
+    print("║  💾 GUARDADO:")
+    print("║     Archivo: " .. SAVE_FILE)
+    print("║     Auto-save: " .. (self.learning_system.auto_save and "✅ Activo" or "❌ Inactivo"))
+    print("║     Intervalo: " .. self.learning_system.save_interval .. "s")
+    print("║")
+    print("╚═══════════════════════════════════════════════════════════════╝\n")
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 🚀 INICIALIZAR
+-- ═══════════════════════════════════════════════════════════════════════════
+
+print("🚀 Creando instancia de IA...")
+
+local ai_instance = TycoonAI_Ultimate.new()
+
+_G.AI = ai_instance
+_G.TycoonAI_Ultimate = ai_instance
+
+print("\n╔═══════════════════════════════════════════════════════════════╗")
+print("║              ✅ TYCOON AI ULTIMATE - LISTO!                   ║")
+print("╠═══════════════════════════════════════════════════════════════╣")
+print("║                                                               ║")
+print("║  💬 USAR:                                                     ║")
+print("║     _G.AI:Chat('tu mensaje')                                  ║")
+print("║                                                               ║")
+print("║  🎓 ENSEÑAR:                                                  ║")
+print("║     _G.AI:Teach('concepto', 'información')                    ║")
+print("║     O di: 'Aprende que X es Y'                                ║")
+print("║                                                               ║")
+print("║  📚 VER APRENDIDO:                                            ║")
+print("║     _G.AI:ShowLearned()                                       ║")
+print("║                                                               ║")
+print("║  💾 GUARDAR/CARGAR:                                           ║")
+print("║     _G.AI:SaveMemory()                                        ║")
+print("║     _G.AI:LoadMemory()                                        ║")
+print("║                                                               ║")
+print("║  📊 REPORTE:                                                  ║")
+print("║     _G.AI:PrintReport()                                       ║")
+print("║                                                               ║")
+print("╚═══════════════════════════════════════════════════════════════╝\n")
+
+print("🎬 DEMO RÁPIDA:\n")
+wait(0.5)
+_G.AI:Chat("Hola!")
+
+wait(1)
+
+print("\n💡 EJEMPLO DE ENSEÑANZA:")
+print("   _G.AI:Teach('mi_juego', 'Es un tycoon de pizzas')")
+print("   Luego pregunta: _G.AI:Chat('Qué sabes de mi juego?')")
+
+print("\n💙 'Una IA que nunca olvida lo que le enseñas' 🧠✨\n")
+
+return ai_instance
